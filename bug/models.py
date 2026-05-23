@@ -24,9 +24,12 @@ class BugReport(models.Model):
     reporter_name = models.CharField(max_length=20)
     reporter_info = models.TextField(blank=True, null=True)
     reporter_phone_number = models.CharField(max_length=20)
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'bug_report'
+        ordering = ['-created_at']
 
     def __str__(self):
         return self.title
