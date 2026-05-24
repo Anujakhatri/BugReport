@@ -1,11 +1,12 @@
 from django.urls import path
 
-
-from .views import bug_report_view, bug_report_post, bug_report_detail
+from . import views
 
 urlpatterns = [
-    #function based views
-    path('bug-reports/', bug_report_view, name='bug_report_view' ),
-    path('bug-report/create/', bug_report_post, name='bug_report_post' ),
-    path('bug-report/<int:pk>/', bug_report_detail, name='bug_report_detail'),
+    # Frontend template view
+    path('', views.index, name='index'),
+
+    # API views
+    path('api/reports/', views.bug_list_create_view, name='bug_list_create'),
+    path('api/reports/<int:pk>/', views.bug_detail_view, name='bug_detail'),
 ]
