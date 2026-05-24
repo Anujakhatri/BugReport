@@ -49,6 +49,6 @@ def bug_report_detail(request, pk):
     #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     #
     # if request.method == 'DELETE':
-    #     bug = BugReport.objects.get(pk=pk)
+    #     bug = Bug_Report.objects.get(pk=pk)
     #     bug.delete()
     #     return Response(status=status.HTTP_204_NO_CONTENT)

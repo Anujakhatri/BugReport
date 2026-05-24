@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name="BugReport",
+            name="Bug_Report",
             fields=[
                 (
                     "id",

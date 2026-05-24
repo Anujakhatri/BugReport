@@ -1,7 +1,7 @@
 from django.test import TestCase
 
-# from bug.models import BugReport
+# from bug.models import Bug_Report
 #
 # # Create your tests here.
-# bug = BugReport.objects.first()
+# bug = Bug_Report.objects.first()
 # print(bug)

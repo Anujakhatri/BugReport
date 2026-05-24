@@ -1,1 +1,1 @@
-web: gunicorn bug_report.wsgi
+web: gunicorn Bug_report.wsgi
