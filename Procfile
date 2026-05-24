@@ -1,1 +1,1 @@
-web: gunicorn bugreportrepo.wsgi
+web: gunicorn bugreport.wsgi
