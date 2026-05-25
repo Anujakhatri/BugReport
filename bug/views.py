@@ -43,7 +43,7 @@ def bug_detail_view(request, pk):
         serializer = BugReportSerializer(bug)
         return Response(serializer.data)
 
-    elif request.method==('PUT','PATCH'):
+    elif request.method in ('PUT','PATCH'):
         partial = request.method == 'PATCH'
         serializer=BugReportSerializer(bug, data=request.data, partial=partial)
         if serializer.is_valid():
