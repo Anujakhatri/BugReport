@@ -33,7 +33,7 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
 
-CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_ALL_ORIGINS = True
 
 
 # Application definition
@@ -101,7 +101,7 @@ if DATABASE_URL:
         "default": dj_database_url.config(
             default=DATABASE_URL,
             conn_max_age=600,
-            ssl_require=True,
+            ssl_require=not DEBUG,  # Require SSL in production, disable for local connections
         )
     }
 else:
@@ -154,3 +154,7 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
