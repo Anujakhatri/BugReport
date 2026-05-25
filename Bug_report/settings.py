@@ -29,12 +29,16 @@ load_dotenv(BASE_DIR / '.env', override=True)
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
 
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost, 127.0.0.1').split(',')
 
 CORS_ALLOW_ALL_ORIGINS = True
 
+ # CSRF for POST requests on Render
+CSRF_TRUSTED_ORIGINS = [
+    'https://bugreport-b1lp.onrender.com',
+]
 
 # Application definition
 
