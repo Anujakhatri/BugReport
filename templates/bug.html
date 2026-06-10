@@ -11,7 +11,6 @@
 <body>
     <div id="root"></div>
 
-    <!-- Add React via CDN -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -20,6 +19,106 @@
     <script type="text/babel">
         const { useState } = React;
 
+        // ── AI Review Chat Component ─────────────────────────────────────
+        function AIReviewChat({ bugId }) {
+            const [messages, setMessages] = useState([
+                {
+                    role: 'assistant',
+                    text: "👋 Hi! I'm your AI bug reviewer. Click \"Review Bug\" and I'll analyze this report and suggest a fix.",
+                }
+            ]);
+            const [loading, setLoading] = useState(false);
+            const [reviewed, setReviewed] = useState(false);
+
+            async function handleReview() {
+                if (loading || reviewed) return;
+                setLoading(true);
+
+                // Add user message
+                setMessages(prev => [...prev, { role: 'user', text: '🔍 Please review this bug and suggest a fix.' }]);
+
+                try {
+                    const res = await fetch(`/api/reports/${bugId}/ai-review/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                    });
+                    const data = await res.json();
+
+                    setMessages(prev => [
+                        ...prev,
+                        {
+                            role: 'assistant',
+                            text: data.success ? data.review : `❌ ${data.review}`,
+                        }
+                    ]);
+                    if (data.success) setReviewed(true);
+                } catch (err) {
+                    setMessages(prev => [
+                        ...prev,
+                        { role: 'assistant', text: '❌ Failed to connect to AI service. Please try again.' }
+                    ]);
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            return (
+                <div style={aiStyles.wrapper}>
+                    {/* Header */}
+                    <div style={aiStyles.header}>
+                        <span className="material-icons" style={{ fontSize: '20px' }}>smart_toy</span>
+                        <span style={{ fontWeight: '600', fontSize: '15px' }}>AI Bug Reviewer</span>
+                    </div>
+
+                    {/* Messages */}
+                    <div style={aiStyles.chatBox}>
+                        {messages.map((msg, i) => (
+                            <div key={i} style={msg.role === 'user' ? aiStyles.userMsg : aiStyles.assistantMsg}>
+                                {msg.role === 'assistant' && (
+                                    <span className="material-icons" style={aiStyles.botIcon}>smart_toy</span>
+                                )}
+                                <div style={msg.role === 'user' ? aiStyles.userBubble : aiStyles.assistantBubble}>
+                                    {msg.text.split('\n').map((line, j) => (
+                                        <span key={j}>{line}<br /></span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Typing indicator */}
+                        {loading && (
+                            <div style={aiStyles.assistantMsg}>
+                                <span className="material-icons" style={aiStyles.botIcon}>smart_toy</span>
+                                <div style={aiStyles.assistantBubble}>
+                                    <span style={aiStyles.typing}>Analyzing bug</span>
+                                    <span style={aiStyles.dots}>...</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Review Button */}
+                    {!reviewed && (
+                        <button
+                            onClick={handleReview}
+                            disabled={loading}
+                            style={{ ...aiStyles.reviewBtn, opacity: loading ? 0.7 : 1 }}
+                        >
+                            <span className="material-icons" style={{ fontSize: '18px' }}>auto_fix_high</span>
+                            {loading ? 'Analyzing...' : 'Review Bug'}
+                        </button>
+                    )}
+
+                    {reviewed && (
+                        <div style={aiStyles.doneNote}>
+                            ✅ Review complete. Result saved for future reference.
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ── Main App ─────────────────────────────────────────────────────
         function App() {
             const [formData, setFormData] = useState({
                 title: '',
@@ -28,17 +127,19 @@
                 status: 'open',
                 reporter_name: '',
                 reporter_email: '',
-                reporter_phone_number: '',
+
                 reporter_info: '',
             });
 
             const [submitted, setSubmitted] = useState(false);
+            const [submittedBugId, setSubmittedBugId] = useState(null);
             const [error, setError] = useState(null);
             const [isSubmitting, setIsSubmitting] = useState(false);
 
             function handleChange(e) {
                 setFormData({ ...formData, [e.target.name]: e.target.value });
             }
+
             async function handleSubmit(e) {
                 e.preventDefault();
                 if (isSubmitting) return;
@@ -46,13 +147,13 @@
                 try {
                     const response = await fetch('/api/reports/', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(formData),
                     });
 
                     if (response.ok) {
+                        const data = await response.json();
+                        setSubmittedBugId(data.id);   // save the bug id for AI review
                         setSubmitted(true);
                         setError(null);
                     } else {
@@ -66,38 +167,51 @@
                 }
             }
 
+            function handleReset() {
+                setSubmitted(false);
+                setSubmittedBugId(null);
+                setFormData({
+                    title: '',
+                    description: '',
+                    severity: 'low',
+                    status: 'open',
+                    reporter_name: '',
+                    reporter_email: '',
+
+                    reporter_info: '',
+                });
+            }
+
+            // ── Success screen with AI chat ──────────────────────────────
             if (submitted) {
                 return (
                     <div style={styles.center}>
-                        <div style={styles.card}>
+                        <div style={{ ...styles.card, maxWidth: '680px' }}>
+
+                            {/* Success banner */}
                             <div style={styles.successBox}>
-                                <div style={styles.successIcon}><span className="material-icons">verified_user</span></div>
+                                <div style={styles.successIcon}>
+                                    <span className="material-icons">verified_user</span>
+                                </div>
                                 <h2 style={styles.successTitle}>Report Submitted!</h2>
-                                <p style={styles.successText}>Thank you! Your bug report has been received and will be reviewed shortly.</p>
-                                <button
-                                    style={styles.btn}
-                                    onClick={() => {
-                                        setSubmitted(false);
-                                        setFormData({
-                                            title: '',
-                                            description: '',
-                                            severity: 'low',
-                                            status: 'open',
-                                            reporter_name: '',
-                                            reporter_email: '',
-                                            reporter_phone_number: '',
-                                            reporter_info: '',
-                                        });
-                                    }}
-                                >
-                                    Submit Another Report
-                                </button>
+                                <p style={styles.successText}>
+                                    Your bug report has been received. The AI reviewer below will analyze it and suggest a fix.
+                                </p>
                             </div>
+
+                            {/* AI Review Chat */}
+                            {submittedBugId && <AIReviewChat bugId={submittedBugId} />}
+
+                            {/* Submit another */}
+                            <button style={{ ...styles.btn, marginTop: '20px' }} onClick={handleReset}>
+                                Submit Another Report
+                            </button>
                         </div>
                     </div>
                 );
             }
 
+            // ── Form ─────────────────────────────────────────────────────
             return (
                 <div style={styles.center}>
                     <div style={styles.card}>
@@ -106,7 +220,6 @@
                         {error && <p style={styles.error}>{error}</p>}
 
                         <form onSubmit={handleSubmit}>
-
                             <Field label="Title *">
                                 <input
                                     style={styles.input}
@@ -131,12 +244,7 @@
 
                             <div style={styles.row}>
                                 <Field label="Severity *">
-                                    <select
-                                        style={styles.input}
-                                        name="severity"
-                                        value={formData.severity}
-                                        onChange={handleChange}
-                                    >
+                                    <select style={styles.input} name="severity" value={formData.severity} onChange={handleChange}>
                                         <option value="low">Low</option>
                                         <option value="medium">Medium</option>
                                         <option value="high">High</option>
@@ -145,12 +253,7 @@
                                 </Field>
 
                                 <Field label="Status *">
-                                    <select
-                                        style={styles.input}
-                                        name="status"
-                                        value={formData.status}
-                                        onChange={handleChange}
-                                    >
+                                    <select style={styles.input} name="status" value={formData.status} onChange={handleChange}>
                                         <option value="open">Open</option>
                                         <option value="in_progress">In Progress</option>
                                         <option value="resolved">Resolved</option>
@@ -184,17 +287,6 @@
                                 </Field>
                             </div>
 
-                            <Field label="Phone Number *">
-                                <input
-                                    style={styles.input}
-                                    name="reporter_phone_number"
-                                    value={formData.reporter_phone_number}
-                                    onChange={handleChange}
-                                    placeholder="+977 986005604"
-                                    required
-                                />
-                            </Field>
-
                             <Field label="Additional Info">
                                 <textarea
                                     style={{ ...styles.input, height: '80px' }}
@@ -205,7 +297,11 @@
                                 />
                             </Field>
 
-                            <button type="submit" style={{ ...styles.btn, opacity: isSubmitting ? 0.7 : 1 }} disabled={isSubmitting}>
+                            <button
+                                type="submit"
+                                style={{ ...styles.btn, opacity: isSubmitting ? 0.7 : 1 }}
+                                disabled={isSubmitting}
+                            >
                                 {isSubmitting ? 'Submitting...' : 'Submit Bug Report'}
                             </button>
                         </form>
@@ -221,9 +317,10 @@
                     <label style={styles.label}>{label}</label>
                     {children}
                 </div>
-            )
+            );
         }
-        // ── Styles ───────────────────────────────────────────────────────
+
+        // ── Main Styles ──────────────────────────────────────────────────
         const styles = {
             center: {
                 minHeight: '100vh',
@@ -251,9 +348,7 @@
                 gridTemplateColumns: '1fr 1fr',
                 gap: '16px',
             },
-            field: {
-                marginBottom: '16px',
-            },
+            field: { marginBottom: '16px' },
             label: {
                 display: 'block',
                 marginBottom: '6px',
@@ -268,6 +363,7 @@
                 borderRadius: '8px',
                 fontSize: '14px',
                 outline: 'none',
+                boxSizing: 'border-box',
             },
             btn: {
                 width: '100%',
@@ -292,13 +388,10 @@
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                padding: '24px 0',
+                padding: '16px 0 24px',
                 textAlign: 'center',
             },
-            successIcon: {
-                fontSize: '56px',
-                marginBottom: '16px',
-            },
+            successIcon: { fontSize: '56px', marginBottom: '12px', color: '#16a34a' },
             successTitle: {
                 fontSize: '22px',
                 fontWeight: '700',
@@ -308,12 +401,111 @@
             successText: {
                 fontSize: '14px',
                 color: '#555',
-                marginBottom: '24px',
                 lineHeight: '1.6',
             },
         };
 
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />)
+        // ── AI Chat Styles ───────────────────────────────────────────────
+        const aiStyles = {
+            wrapper: {
+                border: '1px solid #e0e7ff',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                background: '#fafbff',
+                marginTop: '8px',
+            },
+            header: {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 16px',
+                background: '#4f46e5',
+                color: '#fff',
+            },
+            badge: {
+                marginLeft: 'auto',
+                fontSize: '11px',
+                background: 'rgba(255,255,255,0.2)',
+                padding: '2px 8px',
+                borderRadius: '99px',
+            },
+            chatBox: {
+                padding: '16px',
+                minHeight: '120px',
+                maxHeight: '360px',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+            },
+            assistantMsg: {
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+            },
+            userMsg: {
+                display: 'flex',
+                justifyContent: 'flex-end',
+            },
+            botIcon: {
+                fontSize: '20px',
+                color: '#4f46e5',
+                marginTop: '2px',
+                flexShrink: 0,
+            },
+            assistantBubble: {
+                background: '#fff',
+                border: '1px solid #e0e7ff',
+                borderRadius: '0 12px 12px 12px',
+                padding: '10px 14px',
+                fontSize: '13.5px',
+                lineHeight: '1.7',
+                color: '#1a1a2e',
+                maxWidth: '90%',
+                whiteSpace: 'pre-wrap',
+            },
+            userBubble: {
+                background: '#4f46e5',
+                color: '#fff',
+                borderRadius: '12px 12px 0 12px',
+                padding: '10px 14px',
+                fontSize: '13.5px',
+                maxWidth: '80%',
+            },
+            reviewBtn: {
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                width: '100%',
+                padding: '12px',
+                background: '#4f46e5',
+                color: '#fff',
+                border: 'none',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+            },
+            doneNote: {
+                textAlign: 'center',
+                padding: '12px',
+                fontSize: '13px',
+                color: '#16a34a',
+                background: '#f0fdf4',
+                borderTop: '1px solid #bbf7d0',
+            },
+            typing: {
+                color: '#6b7280',
+                fontStyle: 'italic',
+            },
+            dots: {
+                color: '#4f46e5',
+                fontWeight: 'bold',
+                animation: 'blink 1s infinite',
+            },
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
     {% endverbatim %}
 </body>

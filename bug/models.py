@@ -23,7 +23,10 @@ class BugReport(models.Model):
     reporter_email = models.EmailField()
     reporter_name = models.CharField(max_length=100)
     reporter_info = models.TextField(blank=True, null=True)
-    reporter_phone_number = models.CharField(max_length=20)
+
+
+    ai_suggestion = models.TextField(blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

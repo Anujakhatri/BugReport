@@ -31,13 +31,15 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost, 127.0.0.1').split(',')
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')]
 
 CORS_ALLOW_ALL_ORIGINS = True
 
  # CSRF for POST requests on Render
 CSRF_TRUSTED_ORIGINS = [
     'https://bugreport-b1lp.onrender.com',
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
 ]
 
 # Application definition
@@ -72,6 +74,7 @@ ROOT_URLCONF = "Bug_report.urls"
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
 }
 
 

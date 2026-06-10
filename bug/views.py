@@ -7,6 +7,7 @@ from rest_framework.response import Response
 
 from .models import BugReport
 from .serializers import BugReportSerializer
+from .ai_service import review_bug
 
 
 def index(request):
@@ -55,3 +56,32 @@ def bug_detail_view(request, pk):
     elif request.method=='DELETE':
         bug.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def bug_ai_review(request, pk):
+    try:
+        bug = BugReport.objects.get(pk=pk)
+    except BugReport.DoesNotExist:
+        return Response({"error": "Bug not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    # Return cached review if it already exists
+    if bug.ai_suggestion:
+        return Response({"success": True, "review": bug.ai_suggestion}, status=status.HTTP_200_OK)
+
+    # Call Groq AI service
+    result = review_bug(
+        title=bug.title,
+        description=bug.description,
+        severity=bug.severity,
+        status=bug.status,
+        reporter_info=bug.reporter_info or ""
+    )
+
+    # Cache the AI suggestion if successful
+    if result.get("success"):
+        bug.ai_suggestion = result["review"]
+        bug.save()
+
+    return Response(result)
