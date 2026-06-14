@@ -54,7 +54,10 @@ def review_bug(title, description, severity, status, reporter_info=""):
             return {"success": False, "review": f"Groq error: {error_msg}"}
 
         review_text = data["choices"][0]["message"]["content"]
-        return {"success": True, "review": review_text}
+        return {
+            "success": True,
+            "review": review_text
+            }
     except requests.exceptions.Timeout:
         return {"success": False, "review": "Request timed out. Please try again later."}
     except Exception as e:

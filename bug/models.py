@@ -27,6 +27,14 @@ class BugReport(models.Model):
 
     ai_suggestion = models.TextField(blank=True, null=True)
 
+    is_duplicate = models.BooleanField(default=False)
+    duplicate_of = models.ForeignKey(
+        'self',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name='duplicates'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -10,9 +10,36 @@ from .serializers import BugReportSerializer
 from .ai_service import review_bug
 
 
+
 def index(request):
     return render(request, 'bug.html')
 
+
+# ── Duplicate check function ─────────────────────────
+def check_duplicate(new_title, new_description):
+    existing_bugs = BugReport.objects.filter(
+        is_duplicate=False
+    )
+    new_title_words = set(new_title.lower().split())
+    new_desc_words  = set(new_description.lower().split())
+
+    for bug in existing_bugs:
+        # Title similarity
+        existing_title_words = set(bug.title.lower().split())
+        common_title    = new_title_words & existing_title_words
+        max_title_len = max(len(new_title_words), len(existing_title_words))
+        title_similarity = len(common_title) / max_title_len if max_title_len > 0 else 0.0
+
+        # Description similarity
+        existing_desc_words = set(bug.description.lower().split())
+        common_desc     = new_desc_words & existing_desc_words
+        max_desc_len = max(len(new_desc_words), len(existing_desc_words))
+        desc_similarity  = len(common_desc) / max_desc_len if max_desc_len > 0 else 0.0
+
+        if title_similarity >= 0.6 or desc_similarity >= 0.6:
+            return bug
+
+    return None
 
 @csrf_exempt
 @api_view(['GET', 'POST'])
@@ -24,6 +51,26 @@ def bug_list_create_view(request):
         return Response(serializer.data)
 
     elif request.method == 'POST':
+        title = request.data.get('title', '')
+        description = request.data.get('description', '')
+
+        dublicate = check_duplicate(title, description)
+        if dublicate:
+            return Response({
+                "is_duplicate": True,
+                "message": "same bug report before",
+                "existing_bug": {
+                    "id": dublicate.id,
+                    "title": dublicate.title,
+                    "description" : dublicate.description,
+                    "severity":    dublicate.severity,
+                    "status":      dublicate.status,
+                    "created_at":  str(dublicate.created_at),
+
+                }
+            }, status=status.HTTP_201_CREATED)
+
+        #no dublicate
         serializer = BugReportSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -85,3 +132,4 @@ def bug_ai_review(request, pk):
         bug.save()
 
     return Response(result)
+

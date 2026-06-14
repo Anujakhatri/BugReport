@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <title>Bug Report</title>
     <link rel="icon" href="data:,">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
-
 <body>
     <div id="root"></div>
 
@@ -19,7 +17,7 @@
     <script type="text/babel">
         const { useState } = React;
 
-        // ── AI Review Chat Component ─────────────────────────────────────
+        // ── AI Review Chat Component ──────────────────────────────────
         function AIReviewChat({ bugId }) {
             const [messages, setMessages] = useState([
                 {
@@ -27,36 +25,30 @@
                     text: "👋 Hi! I'm your AI bug reviewer. Click \"Review Bug\" and I'll analyze this report and suggest a fix.",
                 }
             ]);
-            const [loading, setLoading] = useState(false);
+            const [loading, setLoading]   = useState(false);
             const [reviewed, setReviewed] = useState(false);
 
             async function handleReview() {
                 if (loading || reviewed) return;
                 setLoading(true);
-
-                // Add user message
                 setMessages(prev => [...prev, { role: 'user', text: '🔍 Please review this bug and suggest a fix.' }]);
 
                 try {
-                    const res = await fetch(`/api/reports/${bugId}/ai-review/`, {
+                    const res  = await fetch(`/api/reports/${bugId}/ai-review/`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                     });
                     const data = await res.json();
-
-                    setMessages(prev => [
-                        ...prev,
-                        {
-                            role: 'assistant',
-                            text: data.success ? data.review : `❌ ${data.review}`,
-                        }
-                    ]);
+                    setMessages(prev => [...prev, {
+                        role: 'assistant',
+                        text: data.success ? data.review : `❌ ${data.review}`,
+                    }]);
                     if (data.success) setReviewed(true);
                 } catch (err) {
-                    setMessages(prev => [
-                        ...prev,
-                        { role: 'assistant', text: '❌ Failed to connect to AI service. Please try again.' }
-                    ]);
+                    setMessages(prev => [...prev, {
+                        role: 'assistant',
+                        text: '❌ Failed to connect to AI service. Please try again.'
+                    }]);
                 } finally {
                     setLoading(false);
                 }
@@ -64,13 +56,11 @@
 
             return (
                 <div style={aiStyles.wrapper}>
-                    {/* Header */}
                     <div style={aiStyles.header}>
                         <span className="material-icons" style={{ fontSize: '20px' }}>smart_toy</span>
                         <span style={{ fontWeight: '600', fontSize: '15px' }}>AI Bug Reviewer</span>
                     </div>
 
-                    {/* Messages */}
                     <div style={aiStyles.chatBox}>
                         {messages.map((msg, i) => (
                             <div key={i} style={msg.role === 'user' ? aiStyles.userMsg : aiStyles.assistantMsg}>
@@ -85,7 +75,6 @@
                             </div>
                         ))}
 
-                        {/* Typing indicator */}
                         {loading && (
                             <div style={aiStyles.assistantMsg}>
                                 <span className="material-icons" style={aiStyles.botIcon}>smart_toy</span>
@@ -97,18 +86,13 @@
                         )}
                     </div>
 
-                    {/* Review Button */}
                     {!reviewed && (
-                        <button
-                            onClick={handleReview}
-                            disabled={loading}
-                            style={{ ...aiStyles.reviewBtn, opacity: loading ? 0.7 : 1 }}
-                        >
+                        <button onClick={handleReview} disabled={loading}
+                            style={{ ...aiStyles.reviewBtn, opacity: loading ? 0.7 : 1 }}>
                             <span className="material-icons" style={{ fontSize: '18px' }}>auto_fix_high</span>
                             {loading ? 'Analyzing...' : 'Review Bug'}
                         </button>
                     )}
-
                     {reviewed && (
                         <div style={aiStyles.doneNote}>
                             ✅ Review complete. Result saved for future reference.
@@ -118,32 +102,32 @@
             );
         }
 
-        // ── Main App ─────────────────────────────────────────────────────
+        // ── Main App ─────────────────────────────────────────────────
         function App() {
             const [formData, setFormData] = useState({
-                title: '',
-                description: '',
-                severity: 'low',
-                status: 'open',
-                reporter_name: '',
-                reporter_email: '',
-
-                reporter_info: '',
+                title: '', description: '', severity: 'low',
+                status: 'open', reporter_name: '', reporter_email: '', reporter_info: '',
             });
 
-            const [submitted, setSubmitted] = useState(false);
+            const [submitted,     setSubmitted]     = useState(false);
             const [submittedBugId, setSubmittedBugId] = useState(null);
-            const [error, setError] = useState(null);
-            const [isSubmitting, setIsSubmitting] = useState(false);
+            const [error,         setError]         = useState(null);
+            const [isSubmitting,  setIsSubmitting]  = useState(false);
+
+            //add duplication feature
+            const [duplicateBug, setDuplicateBug]   = useState(null);
 
             function handleChange(e) {
                 setFormData({ ...formData, [e.target.name]: e.target.value });
             }
 
+            // एउटा मात्र handleSubmit — duplicate check सहित
             async function handleSubmit(e) {
                 e.preventDefault();
                 if (isSubmitting) return;
                 setIsSubmitting(true);
+                setDuplicateBug(null); // reset previous duplicate
+
                 try {
                     const response = await fetch('/api/reports/', {
                         method: 'POST',
@@ -151,13 +135,20 @@
                         body: JSON.stringify(formData),
                     });
 
+                    const data = await response.json();
+
+                    // ── Duplicate भेटियो ──────────────────────
+                    if (data.is_duplicate) {
+                        setDuplicateBug(data.existing_bug); // setDuplicateBug accessible छ
+                        return;
+                    }
+
+                    // ── New bug ───────────────────────────────
                     if (response.ok) {
-                        const data = await response.json();
-                        setSubmittedBugId(data.id);   // save the bug id for AI review
+                        setSubmittedBugId(data.id);
                         setSubmitted(true);
                         setError(null);
                     } else {
-                        const data = await response.json();
                         setError(JSON.stringify(data));
                     }
                 } catch (err) {
@@ -170,25 +161,18 @@
             function handleReset() {
                 setSubmitted(false);
                 setSubmittedBugId(null);
+                setDuplicateBug(null); // reset duplicate
                 setFormData({
-                    title: '',
-                    description: '',
-                    severity: 'low',
-                    status: 'open',
-                    reporter_name: '',
-                    reporter_email: '',
-
-                    reporter_info: '',
+                    title: '', description: '', severity: 'low',
+                    status: 'open', reporter_name: '', reporter_email: '', reporter_info: '',
                 });
             }
 
-            // ── Success screen with AI chat ──────────────────────────────
+            // ── Success screen ────────────────────────────────────────
             if (submitted) {
                 return (
                     <div style={styles.center}>
                         <div style={{ ...styles.card, maxWidth: '680px' }}>
-
-                            {/* Success banner */}
                             <div style={styles.successBox}>
                                 <div style={styles.successIcon}>
                                     <span className="material-icons">verified_user</span>
@@ -198,11 +182,7 @@
                                     Your bug report has been received. The AI reviewer below will analyze it and suggest a fix.
                                 </p>
                             </div>
-
-                            {/* AI Review Chat */}
                             {submittedBugId && <AIReviewChat bugId={submittedBugId} />}
-
-                            {/* Submit another */}
                             <button style={{ ...styles.btn, marginTop: '20px' }} onClick={handleReset}>
                                 Submit Another Report
                             </button>
@@ -211,37 +191,52 @@
                 );
             }
 
-            // ── Form ─────────────────────────────────────────────────────
+            // ── Form ─────────────────────────────────────────────────
             return (
                 <div style={styles.center}>
                     <div style={styles.card}>
-                        <h1 style={styles.heading}> Bug Report</h1>
+                        <h1 style={styles.heading}>🐛 Bug Report</h1>
 
                         {error && <p style={styles.error}>{error}</p>}
 
+
+                        {duplicateBug && (
+                            <div style={styles.duplicateCard}>
+                                <h3 style={{ color: '#b45309', margin: '0 0 12px' }}>
+                                    ⚠️ Similar Bug Already Reported!
+                                </h3>
+                                <p><b>Title:</b> {duplicateBug.title}</p>
+                                <p><b>Description:</b> {duplicateBug.description}</p>
+                                <p><b>Severity:</b> {duplicateBug.severity}</p>
+                                <p><b>Status:</b> {duplicateBug.status}</p>
+                                <p><b>Reported on:</b> {duplicateBug.created_at}</p>
+                                <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                                    <button
+                                        style={{ ...styles.btn, background: '#6b7280' }}
+                                        onClick={() => setDuplicateBug(null)}
+                                    >
+                                        Still Submit as New
+                                    </button>
+                                    <button
+                                        style={{ ...styles.btn, background: '#f59e0b' }}
+                                        onClick={handleReset}
+                                    >
+                                        Go Back
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         <form onSubmit={handleSubmit}>
                             <Field label="Title *">
-                                <input
-                                    style={styles.input}
-                                    name="title"
-                                    value={formData.title}
-                                    onChange={handleChange}
-                                    placeholder="Short bug title"
-                                    required
-                                />
+                                <input style={styles.input} name="title" value={formData.title}
+                                    onChange={handleChange} placeholder="Short bug title" required />
                             </Field>
-
                             <Field label="Description *">
-                                <textarea
-                                    style={{ ...styles.input, height: '100px' }}
-                                    name="description"
-                                    value={formData.description}
-                                    onChange={handleChange}
-                                    placeholder="Describe the bug in detail"
-                                    required
-                                />
+                                <textarea style={{ ...styles.input, height: '100px' }} name="description"
+                                    value={formData.description} onChange={handleChange}
+                                    placeholder="Describe the bug in detail" required />
                             </Field>
-
                             <div style={styles.row}>
                                 <Field label="Severity *">
                                     <select style={styles.input} name="severity" value={formData.severity} onChange={handleChange}>
@@ -251,7 +246,6 @@
                                         <option value="critical">Critical</option>
                                     </select>
                                 </Field>
-
                                 <Field label="Status *">
                                     <select style={styles.input} name="status" value={formData.status} onChange={handleChange}>
                                         <option value="open">Open</option>
@@ -261,47 +255,25 @@
                                     </select>
                                 </Field>
                             </div>
-
                             <div style={styles.row}>
                                 <Field label="Your Name *">
-                                    <input
-                                        style={styles.input}
-                                        name="reporter_name"
-                                        value={formData.reporter_name}
-                                        onChange={handleChange}
-                                        placeholder="John Doe"
-                                        required
-                                    />
+                                    <input style={styles.input} name="reporter_name" value={formData.reporter_name}
+                                        onChange={handleChange} placeholder="John Doe" required />
                                 </Field>
-
                                 <Field label="Email *">
-                                    <input
-                                        style={styles.input}
-                                        type="email"
-                                        name="reporter_email"
-                                        value={formData.reporter_email}
-                                        onChange={handleChange}
-                                        placeholder="john@example.com"
-                                        required
-                                    />
+                                    <input style={styles.input} type="email" name="reporter_email"
+                                        value={formData.reporter_email} onChange={handleChange}
+                                        placeholder="john@example.com" required />
                                 </Field>
                             </div>
-
                             <Field label="Additional Info">
-                                <textarea
-                                    style={{ ...styles.input, height: '80px' }}
-                                    name="reporter_info"
-                                    value={formData.reporter_info}
-                                    onChange={handleChange}
-                                    placeholder="Any extra details (optional)"
-                                />
+                                <textarea style={{ ...styles.input, height: '80px' }} name="reporter_info"
+                                    value={formData.reporter_info} onChange={handleChange}
+                                    placeholder="Any extra details (optional)" />
                             </Field>
-
-                            <button
-                                type="submit"
+                            <button type="submit"
                                 style={{ ...styles.btn, opacity: isSubmitting ? 0.7 : 1 }}
-                                disabled={isSubmitting}
-                            >
+                                disabled={isSubmitting}>
                                 {isSubmitting ? 'Submitting...' : 'Submit Bug Report'}
                             </button>
                         </form>
@@ -310,7 +282,6 @@
             );
         }
 
-        // ── Reusable Field wrapper ───────────────────────────────────────
         function Field({ label, children }) {
             return (
                 <div style={styles.field}>
@@ -320,194 +291,41 @@
             );
         }
 
-        // ── Main Styles ──────────────────────────────────────────────────
         const styles = {
-            center: {
-                minHeight: '100vh',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'flex-start',
-                padding: '40px 16px',
-                background: '#f0f2f5',
-            },
-            card: {
-                background: '#fff',
-                borderRadius: '12px',
-                padding: '32px',
-                width: '100%',
-                maxWidth: '640px',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-            },
-            heading: {
-                marginBottom: '24px',
-                fontSize: '24px',
-                color: '#1a1a2e',
-            },
-            row: {
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '16px',
-            },
+            center: { minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '40px 16px', background: '#f0f2f5' },
+            card: { background: '#fff', borderRadius: '12px', padding: '32px', width: '100%', maxWidth: '640px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' },
+            heading: { marginBottom: '24px', fontSize: '24px', color: '#1a1a2e' },
+            row: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' },
             field: { marginBottom: '16px' },
-            label: {
-                display: 'block',
-                marginBottom: '6px',
-                fontWeight: '600',
-                fontSize: '14px',
-                color: '#444',
-            },
-            input: {
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                fontSize: '14px',
-                outline: 'none',
-                boxSizing: 'border-box',
-            },
-            btn: {
-                width: '100%',
-                padding: '12px',
-                background: '#4f46e5',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                cursor: 'pointer',
-                marginTop: '8px',
-            },
-            error: {
-                background: '#fee2e2',
-                color: '#dc2626',
-                padding: '10px',
-                borderRadius: '8px',
-                marginBottom: '16px',
-                fontSize: '14px',
-            },
-            successBox: {
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                padding: '16px 0 24px',
-                textAlign: 'center',
-            },
+            label: { display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '14px', color: '#444' },
+            input: { width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' },
+            btn: { width: '100%', padding: '12px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '16px', cursor: 'pointer', marginTop: '8px' },
+            error: { background: '#fee2e2', color: '#dc2626', padding: '10px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' },
+            successBox: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0 24px', textAlign: 'center' },
             successIcon: { fontSize: '56px', marginBottom: '12px', color: '#16a34a' },
-            successTitle: {
-                fontSize: '22px',
-                fontWeight: '700',
-                color: '#16a34a',
-                marginBottom: '8px',
-            },
-            successText: {
-                fontSize: '14px',
-                color: '#555',
-                lineHeight: '1.6',
-            },
+            successTitle: { fontSize: '22px', fontWeight: '700', color: '#16a34a', marginBottom: '8px' },
+            successText: { fontSize: '14px', color: '#555', lineHeight: '1.6' },
+            // ✅ नयाँ style
+            duplicateCard: { background: '#fff8e1', border: '1px solid #f59e0b', borderRadius: '12px', padding: '20px', marginBottom: '20px' },
         };
 
-        // ── AI Chat Styles ───────────────────────────────────────────────
         const aiStyles = {
-            wrapper: {
-                border: '1px solid #e0e7ff',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                background: '#fafbff',
-                marginTop: '8px',
-            },
-            header: {
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 16px',
-                background: '#4f46e5',
-                color: '#fff',
-            },
-            badge: {
-                marginLeft: 'auto',
-                fontSize: '11px',
-                background: 'rgba(255,255,255,0.2)',
-                padding: '2px 8px',
-                borderRadius: '99px',
-            },
-            chatBox: {
-                padding: '16px',
-                minHeight: '120px',
-                maxHeight: '360px',
-                overflowY: 'auto',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-            },
-            assistantMsg: {
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '8px',
-            },
-            userMsg: {
-                display: 'flex',
-                justifyContent: 'flex-end',
-            },
-            botIcon: {
-                fontSize: '20px',
-                color: '#4f46e5',
-                marginTop: '2px',
-                flexShrink: 0,
-            },
-            assistantBubble: {
-                background: '#fff',
-                border: '1px solid #e0e7ff',
-                borderRadius: '0 12px 12px 12px',
-                padding: '10px 14px',
-                fontSize: '13.5px',
-                lineHeight: '1.7',
-                color: '#1a1a2e',
-                maxWidth: '90%',
-                whiteSpace: 'pre-wrap',
-            },
-            userBubble: {
-                background: '#4f46e5',
-                color: '#fff',
-                borderRadius: '12px 12px 0 12px',
-                padding: '10px 14px',
-                fontSize: '13.5px',
-                maxWidth: '80%',
-            },
-            reviewBtn: {
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                width: '100%',
-                padding: '12px',
-                background: '#4f46e5',
-                color: '#fff',
-                border: 'none',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-            },
-            doneNote: {
-                textAlign: 'center',
-                padding: '12px',
-                fontSize: '13px',
-                color: '#16a34a',
-                background: '#f0fdf4',
-                borderTop: '1px solid #bbf7d0',
-            },
-            typing: {
-                color: '#6b7280',
-                fontStyle: 'italic',
-            },
-            dots: {
-                color: '#4f46e5',
-                fontWeight: 'bold',
-                animation: 'blink 1s infinite',
-            },
+            wrapper: { border: '1px solid #e0e7ff', borderRadius: '12px', overflow: 'hidden', background: '#fafbff', marginTop: '8px' },
+            header: { display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', background: '#4f46e5', color: '#fff' },
+            chatBox: { padding: '16px', minHeight: '120px', maxHeight: '360px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' },
+            assistantMsg: { display: 'flex', alignItems: 'flex-start', gap: '8px' },
+            userMsg: { display: 'flex', justifyContent: 'flex-end' },
+            botIcon: { fontSize: '20px', color: '#4f46e5', marginTop: '2px', flexShrink: 0 },
+            assistantBubble: { background: '#fff', border: '1px solid #e0e7ff', borderRadius: '0 12px 12px 12px', padding: '10px 14px', fontSize: '13.5px', lineHeight: '1.7', color: '#1a1a2e', maxWidth: '90%', whiteSpace: 'pre-wrap' },
+            userBubble: { background: '#4f46e5', color: '#fff', borderRadius: '12px 12px 0 12px', padding: '10px 14px', fontSize: '13.5px', maxWidth: '80%' },
+            reviewBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', width: '100%', padding: '12px', background: '#4f46e5', color: '#fff', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
+            doneNote: { textAlign: 'center', padding: '12px', fontSize: '13px', color: '#16a34a', background: '#f0fdf4', borderTop: '1px solid #bbf7d0' },
+            typing: { color: '#6b7280', fontStyle: 'italic' },
+            dots: { color: '#4f46e5', fontWeight: 'bold' },
         };
 
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
     {% endverbatim %}
 </body>
-
 </html>
